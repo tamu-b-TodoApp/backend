@@ -1,0 +1,44 @@
+services:
+  backend:
+    build: .
+    volumes:
+      - .:/app
+    ports:
+      - 8080:8080
+    networks:
+      - backend-network
+    tty: true
+    stdin_open: true
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+  db:
+    image: postgres:18.4
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${DB_USER}", "-d", "${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - backend-network
+networks:
+    backend-network:
+        driver: bridge
+volumes:
+  postgres-data:
+    driver: local
