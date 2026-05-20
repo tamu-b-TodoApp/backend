@@ -8,7 +8,6 @@ services:
     networks:
       - backend-network
     tty: true
-    stdin_open: true
     depends_on:
       db:
         condition: service_healthy
