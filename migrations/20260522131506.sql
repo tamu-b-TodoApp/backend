@@ -4,7 +4,7 @@ CREATE TABLE "public"."todos" (
   "created_at" timestamptz NULL,
   "updated_at" timestamptz NULL,
   "deleted_at" timestamptz NULL,
-  "title" text NOT NULL,
+  "title" character varying(255) NOT NULL,
   "description" text NOT NULL,
   PRIMARY KEY ("id")
 );
