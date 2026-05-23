@@ -1,9 +1,11 @@
 package model
 
-import "gorm.io/gorm"
+import "time"
 
 type Todo struct {
-	gorm.Model
+	ID          uint `gorm:"primarykey"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	Title       string `gorm:"not null;type:varchar(255)"`
 	Description string `gorm:"not null"`
 }

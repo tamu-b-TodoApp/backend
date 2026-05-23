@@ -1,15 +1,17 @@
 package main
 
 import (
-	"ariga.io/atlas-provider-gorm/gormschema"
 	"io"
 	"os"
 	"todo/model"
+
+	"ariga.io/atlas-provider-gorm/gormschema"
 )
 
 func main() {
 	stmts, err := gormschema.New("postgres").Load(
 		&model.Todo{},
+		&model.User{},
 		// 追加モデルをここに列挙
 	)
 	if err != nil {
