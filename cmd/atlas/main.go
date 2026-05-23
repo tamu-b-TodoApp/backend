@@ -12,6 +12,7 @@ func main() {
 	stmts, err := gormschema.New("postgres").Load(
 		&model.Todo{},
 		&model.User{},
+		&model.RefreshToken{},
 		// 追加モデルをここに列挙
 	)
 	if err != nil {

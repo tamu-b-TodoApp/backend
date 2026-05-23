@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"todo/internal/handler"
+	"todo/internal/middleware"
 	"todo/internal/repository"
 	"todo/internal/router"
 	"todo/internal/service"
@@ -36,8 +37,10 @@ func main() {
 	h := handler.NewTodoHandler(svc)
 
 	userRepo := repository.NewUserRepository(db)
-	authSvc := service.NewAuthService(userRepo)
-	authH := handler.NewAuthHandler(authSvc)
+	refreshTokenRepo := repository.NewRefreshTokenRepository(db)
+	authSvc := service.NewAuthService(userRepo, refreshTokenRepo)
+	authMiddleware := middleware.Auth(refreshTokenRepo)
+	authH := handler.NewAuthHandler(authSvc, authMiddleware)
 
 	r := router.New(h, authH)
 

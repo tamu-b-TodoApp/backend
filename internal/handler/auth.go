@@ -10,17 +10,19 @@ import (
 )
 
 type AuthHandler struct {
-	service service.AuthService
+	service        service.AuthService
+	authMiddleware func(http.Handler) http.Handler
 }
 
-func NewAuthHandler(svc service.AuthService) *AuthHandler {
-	return &AuthHandler{service: svc}
+func NewAuthHandler(svc service.AuthService, authMiddleware func(http.Handler) http.Handler) *AuthHandler {
+	return &AuthHandler{service: svc, authMiddleware: authMiddleware}
 }
 
 func (h *AuthHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /auth/login", h.Login)
+	mux.HandleFunc("POST /auth/refresh", h.Refresh)
 	mux.HandleFunc("POST /auth/logout", h.Logout)
-	mux.Handle("GET /auth/me", middleware.Auth(http.HandlerFunc(h.Me)))
+	mux.Handle("GET /auth/me", h.authMiddleware(http.HandlerFunc(h.Me)))
 }
 
 type loginRequest struct {
@@ -35,7 +37,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.service.Login(req.Email, req.Password)
+	accessToken, refreshToken, err := h.service.Login(req.Email, req.Password)
 	if errors.Is(err, service.ErrInvalidCredentials) {
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
@@ -45,10 +47,48 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"token": token})
+	writeJSON(w, http.StatusOK, map[string]string{
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
+	})
+}
+
+type refreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
+	var req refreshRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	accessToken, err := h.service.Refresh(req.RefreshToken)
+	if errors.Is(err, service.ErrInvalidToken) {
+		http.Error(w, "invalid token", http.StatusUnauthorized)
+		return
+	}
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"access_token": accessToken})
+}
+
+type logoutRequest struct {
+	RefreshToken string `json:"refresh_token"`
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	var req logoutRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	_ = h.service.Logout(req.RefreshToken)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -65,6 +105,5 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user.Password = ""
 	writeJSON(w, http.StatusOK, user)
 }
