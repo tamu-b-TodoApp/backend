@@ -3,10 +3,10 @@ package model
 import "time"
 
 type User struct {
-	ID              uint `gorm:"primarykey"`
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	Email           string `gorm:"not null;type:varchar(255);index"`
-	Password        string `gorm:"not null;type:varchar(255)"`
-	EmailVerifiedAt time.Time
+	ID              uint      `json:"id" gorm:"primarykey"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	Email           string    `json:"email" gorm:"not null;type:varchar(255);index"`
+	Password        string    `json:"password" gorm:"not null;type:varchar(255)"`
+	EmailVerifiedAt time.Time `json:"email_verified_at"`
 }
