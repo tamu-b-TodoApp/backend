@@ -3,7 +3,7 @@ ifneq (,$(wildcard .env))
   export
 endif
 
-.PHONY: build run dev clean
+.PHONY: build run dev clean seed gen-jwt-secret
 
 build:
 	go build -o server .
@@ -16,6 +16,12 @@ dev:
 
 clean:
 	rm -f server
+
+seed:
+	go run ./cmd/seed/main.go
+
+gen-jwt-secret:
+	go run ./cmd/gen-jwt-secret/main.go
 
 migrate-apply:
 	atlas migrate apply --env $(ENV)

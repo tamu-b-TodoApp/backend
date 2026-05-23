@@ -3,6 +3,8 @@
 
 # ビルド成果物
 server
+seed
+gen-jwt-secret
 
 # Goのキャッシュ
 vendor/

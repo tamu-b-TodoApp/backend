@@ -27,10 +27,19 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if os.Getenv("JWT_SECRET") == "" {
+		log.Fatal("JWT_SECRET is required")
+	}
+
 	repo := repository.NewTodoRepository(db)
 	svc := service.NewTodoService(repo)
 	h := handler.NewTodoHandler(svc)
-	r := router.New(h)
+
+	userRepo := repository.NewUserRepository(db)
+	authSvc := service.NewAuthService(userRepo)
+	authH := handler.NewAuthHandler(authSvc)
+
+	r := router.New(h, authH)
 
 	fmt.Println("Server running on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
