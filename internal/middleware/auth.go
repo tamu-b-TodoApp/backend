@@ -28,7 +28,7 @@ func Auth() func(http.Handler) http.Handler {
 				return
 			}
 
-			if claims.Type != "access" {
+			if claims.Type != token.Access {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}

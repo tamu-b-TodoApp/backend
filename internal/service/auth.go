@@ -49,11 +49,11 @@ func (s *authService) Login(email, password string) (string, string, error) {
 		return "", "", ErrInvalidCredentials
 	}
 
-	accessToken, err := generateToken(user.ID, "access", accessTokenDuration)
+	accessToken, err := generateToken(user.ID, token.Access, accessTokenDuration)
 	if err != nil {
 		return "", "", err
 	}
-	refreshToken, err := generateToken(user.ID, "refresh", refreshTokenDuration)
+	refreshToken, err := generateToken(user.ID, token.Refresh, refreshTokenDuration)
 	if err != nil {
 		return "", "", err
 	}
@@ -66,11 +66,11 @@ func (s *authService) Refresh(refreshToken string) (string, error) {
 	if err != nil {
 		return "", ErrInvalidToken
 	}
-	if claims.Type != "refresh" {
+	if claims.Type != token.Refresh {
 		return "", ErrInvalidToken
 	}
 
-	return generateToken(claims.UserID, "access", accessTokenDuration)
+	return generateToken(claims.UserID, token.Access, accessTokenDuration)
 }
 
 func (s *authService) GetUserByID(id uint) (*model.User, error) {
@@ -81,7 +81,7 @@ func (s *authService) GetUserByID(id uint) (*model.User, error) {
 	return user, err
 }
 
-func generateToken(userID uint, tokenType string, duration time.Duration) (string, error) {
+func generateToken(userID uint, tokenType token.TokenType, duration time.Duration) (string, error) {
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, &token.Claims{
 		UserID: userID,
 		Type:   tokenType,

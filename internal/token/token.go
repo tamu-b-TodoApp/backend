@@ -7,11 +7,18 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+type TokenType string
+
+const (
+	Access  TokenType = "access"
+	Refresh TokenType = "refresh"
+)
+
 var ErrInvalidToken = errors.New("invalid token")
 
 type Claims struct {
-	UserID uint   `json:"sub"`
-	Type   string `json:"type"`
+	UserID uint      `json:"sub"`
+	Type   TokenType `json:"type"`
 	jwt.RegisteredClaims
 }
 
