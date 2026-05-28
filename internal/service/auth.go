@@ -8,12 +8,19 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"todo/internal/repository"
+	"todo/internal/token"
 	"todo/model"
+)
+
+const (
+	accessTokenDuration  = 15 * time.Minute
+	refreshTokenDuration = 7 * 24 * time.Hour
 )
 
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrInvalidToken       = errors.New("invalid token")
+	ErrUserNotFound       = errors.New("user not found")
 )
 
 type AuthService interface {
@@ -32,18 +39,21 @@ func NewAuthService(userRepo repository.UserRepository) AuthService {
 
 func (s *authService) Login(email, password string) (string, string, error) {
 	user, err := s.userRepo.FindByEmail(email)
-	if err != nil {
+	if errors.Is(err, repository.ErrNotFound) {
 		return "", "", ErrInvalidCredentials
+	}
+	if err != nil {
+		return "", "", err
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return "", "", ErrInvalidCredentials
 	}
 
-	accessToken, err := generateToken(user.ID, "access", 15*time.Minute)
+	accessToken, err := generateToken(user.ID, "access", accessTokenDuration)
 	if err != nil {
 		return "", "", err
 	}
-	refreshToken, err := generateToken(user.ID, "refresh", 7*24*time.Hour)
+	refreshToken, err := generateToken(user.ID, "refresh", refreshTokenDuration)
 	if err != nil {
 		return "", "", err
 	}
@@ -52,7 +62,7 @@ func (s *authService) Login(email, password string) (string, string, error) {
 }
 
 func (s *authService) Refresh(refreshToken string) (string, error) {
-	claims, err := parseToken(refreshToken)
+	claims, err := token.Parse(refreshToken)
 	if err != nil {
 		return "", ErrInvalidToken
 	}
@@ -65,11 +75,15 @@ func (s *authService) Refresh(refreshToken string) (string, error) {
 		return "", ErrInvalidToken
 	}
 
-	return generateToken(uint(sub), "access", 15*time.Minute)
+	return generateToken(uint(sub), "access", accessTokenDuration)
 }
 
 func (s *authService) GetUserByID(id uint) (*model.User, error) {
-	return s.userRepo.FindByID(id)
+	user, err := s.userRepo.FindByID(id)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, ErrUserNotFound
+	}
+	return user, err
 }
 
 func generateToken(userID uint, tokenType string, duration time.Duration) (string, error) {
@@ -79,21 +93,4 @@ func generateToken(userID uint, tokenType string, duration time.Duration) (strin
 		"exp":  time.Now().Add(duration).Unix(),
 	})
 	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
-}
-
-func parseToken(tokenStr string) (jwt.MapClaims, error) {
-	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, jwt.ErrSignatureInvalid
-		}
-		return []byte(os.Getenv("JWT_SECRET")), nil
-	})
-	if err != nil || !token.Valid {
-		return nil, ErrInvalidToken
-	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return nil, ErrInvalidToken
-	}
-	return claims, nil
 }

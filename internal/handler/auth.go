@@ -35,6 +35,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
+	if req.Email == "" || req.Password == "" {
+		http.Error(w, "email and password are required", http.StatusBadRequest)
+		return
+	}
 
 	accessToken, refreshToken, err := h.service.Login(req.Email, req.Password)
 	if errors.Is(err, service.ErrInvalidCredentials) {
@@ -84,8 +88,12 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := h.service.GetUserByID(userID)
-	if err != nil {
+	if errors.Is(err, service.ErrUserNotFound) {
 		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 

@@ -3,10 +3,9 @@ package middleware
 import (
 	"context"
 	"net/http"
-	"os"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v5"
+	"todo/internal/token"
 )
 
 type contextKey string
@@ -23,19 +22,8 @@ func Auth() func(http.Handler) http.Handler {
 			}
 
 			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-			token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-				if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, jwt.ErrSignatureInvalid
-				}
-				return []byte(os.Getenv("JWT_SECRET")), nil
-			})
-			if err != nil || !token.Valid {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
-
-			claims, ok := token.Claims.(jwt.MapClaims)
-			if !ok {
+			claims, err := token.Parse(tokenStr)
+			if err != nil {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}
