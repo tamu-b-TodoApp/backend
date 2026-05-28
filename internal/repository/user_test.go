@@ -25,7 +25,14 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic("failed to connect test db: " + err.Error())
 	}
-	if err := db.AutoMigrate(&model.User{}); err != nil {
+	if err := db.AutoMigrate(
+		&model.User{},
+		&model.Company{},
+		&model.CompanyMember{},
+		&model.Team{},
+		&model.TeamMember{},
+		&model.Todo{},
+	); err != nil {
 		panic("failed to migrate: " + err.Error())
 	}
 	testDB = db

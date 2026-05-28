@@ -32,18 +32,27 @@ func main() {
 		log.Fatal("JWT_SECRET is required")
 	}
 
-	repo := repository.NewTodoRepository(db)
-	svc := service.NewTodoService(repo)
-	h := handler.NewTodoHandler(svc)
+	authMiddleware := middleware.Auth()
 
 	userRepo := repository.NewUserRepository(db)
 	authSvc := service.NewAuthService(userRepo)
-	authMiddleware := middleware.Auth()
 	authH := handler.NewAuthHandler(authSvc, authMiddleware)
+
+	companyRepo := repository.NewCompanyRepository(db)
+	companySvc := service.NewCompanyService(companyRepo)
+	companyH := handler.NewCompanyHandler(companySvc, authMiddleware)
+
+	teamRepo := repository.NewTeamRepository(db)
+	teamSvc := service.NewTeamService(teamRepo)
+	teamH := handler.NewTeamHandler(teamSvc, authMiddleware)
+
+	todoRepo := repository.NewTodoRepository(db)
+	todoSvc := service.NewTodoService(todoRepo)
+	todoH := handler.NewTodoHandler(todoSvc, teamSvc, authMiddleware)
 
 	healthH := handler.NewHealthHandler()
 
-	r := router.New(h, authH, healthH)
+	r := router.New(authH, companyH, teamH, todoH, healthH)
 
 	fmt.Println("Server running on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
