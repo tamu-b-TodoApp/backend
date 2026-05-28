@@ -21,7 +21,7 @@ services:
     image: postgres:18.4
     volumes:
       - postgres-data:/var/lib/postgresql
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
