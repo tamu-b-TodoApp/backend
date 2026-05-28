@@ -9,8 +9,14 @@ import (
 
 var ErrInvalidToken = errors.New("invalid token")
 
-func Parse(tokenStr string) (jwt.MapClaims, error) {
-	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+type Claims struct {
+	UserID uint   `json:"sub"`
+	Type   string `json:"type"`
+	jwt.RegisteredClaims
+}
+
+func Parse(tokenStr string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, jwt.ErrSignatureInvalid
 		}
@@ -19,7 +25,7 @@ func Parse(tokenStr string) (jwt.MapClaims, error) {
 	if err != nil || !token.Valid {
 		return nil, ErrInvalidToken
 	}
-	claims, ok := token.Claims.(jwt.MapClaims)
+	claims, ok := token.Claims.(*Claims)
 	if !ok {
 		return nil, ErrInvalidToken
 	}

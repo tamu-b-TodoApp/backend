@@ -28,18 +28,12 @@ func Auth() func(http.Handler) http.Handler {
 				return
 			}
 
-			if claims["type"] != "access" {
+			if claims.Type != "access" {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}
 
-			sub, ok := claims["sub"].(float64)
-			if !ok {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
-
-			ctx := context.WithValue(r.Context(), UserIDKey, uint(sub))
+			ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

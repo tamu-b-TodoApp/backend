@@ -66,16 +66,11 @@ func (s *authService) Refresh(refreshToken string) (string, error) {
 	if err != nil {
 		return "", ErrInvalidToken
 	}
-	if claims["type"] != "refresh" {
+	if claims.Type != "refresh" {
 		return "", ErrInvalidToken
 	}
 
-	sub, ok := claims["sub"].(float64)
-	if !ok {
-		return "", ErrInvalidToken
-	}
-
-	return generateToken(uint(sub), "access", accessTokenDuration)
+	return generateToken(claims.UserID, "access", accessTokenDuration)
 }
 
 func (s *authService) GetUserByID(id uint) (*model.User, error) {
@@ -87,10 +82,12 @@ func (s *authService) GetUserByID(id uint) (*model.User, error) {
 }
 
 func generateToken(userID uint, tokenType string, duration time.Duration) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":  userID,
-		"type": tokenType,
-		"exp":  time.Now().Add(duration).Unix(),
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, &token.Claims{
+		UserID: userID,
+		Type:   tokenType,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
+		},
 	})
-	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	return t.SignedString([]byte(os.Getenv("JWT_SECRET")))
 }
