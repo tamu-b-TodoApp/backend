@@ -29,14 +29,41 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
+func (r loginRequest) validate() error {
+	if r.Email == "" || r.Password == "" {
+		return errors.New("email and password are required")
+	}
+	return nil
+}
+
+type loginResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+type refreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+func (r refreshRequest) validate() error {
+	if r.RefreshToken == "" {
+		return errors.New("refresh_token is required")
+	}
+	return nil
+}
+
+type refreshResponse struct {
+	AccessToken string `json:"access_token"`
+}
+
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req loginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	if req.Email == "" || req.Password == "" {
-		http.Error(w, "email and password are required", http.StatusBadRequest)
+	if err := req.validate(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -50,14 +77,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{
-		"access_token":  accessToken,
-		"refresh_token": refreshToken,
+	writeJSON(w, http.StatusOK, loginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 	})
-}
-
-type refreshRequest struct {
-	RefreshToken string `json:"refresh_token"`
 }
 
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
@@ -66,8 +89,8 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	if req.RefreshToken == "" {
-		http.Error(w, "refresh_token is required", http.StatusBadRequest)
+	if err := req.validate(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -81,7 +104,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"access_token": accessToken})
+	writeJSON(w, http.StatusOK, refreshResponse{AccessToken: accessToken})
 }
 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
