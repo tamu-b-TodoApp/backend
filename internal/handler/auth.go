@@ -66,6 +66,10 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
+	if req.RefreshToken == "" {
+		http.Error(w, "refresh_token is required", http.StatusBadRequest)
+		return
+	}
 
 	accessToken, err := h.service.Refresh(req.RefreshToken)
 	if errors.Is(err, service.ErrInvalidToken) {
