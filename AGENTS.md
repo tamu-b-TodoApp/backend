@@ -91,6 +91,7 @@ Handler → Service → Repository → DB
 
 | コマンド                                  | 内容                                |
 | ----------------------------------------- | ----------------------------------- |
+| `make test`                               | 全テスト実行                        |
 | `make dev`                                | 開発サーバー起動 (`go run main.go`) |
 | `make build`                              | バイナリビルド → `./server`         |
 | `make run`                                | ビルド済みバイナリ実行              |

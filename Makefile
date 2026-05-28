@@ -3,7 +3,10 @@ ifneq (,$(wildcard .env))
   export
 endif
 
-.PHONY: build run dev clean seed gen-jwt-secret
+.PHONY: build run dev clean seed gen-jwt-secret test
+
+test:
+	go test ./...
 
 build:
 	go build -o server .
