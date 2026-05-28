@@ -42,7 +42,9 @@ func main() {
 	authMiddleware := middleware.Auth(refreshTokenRepo)
 	authH := handler.NewAuthHandler(authSvc, authMiddleware)
 
-	r := router.New(h, authH)
+	healthH := handler.NewHealthHandler()
+
+	r := router.New(h, authH, healthH)
 
 	fmt.Println("Server running on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
