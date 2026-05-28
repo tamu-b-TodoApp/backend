@@ -10,7 +10,34 @@
 
 - handler / service / repository のいずれかを追加・変更した場合、対応するテストを必ず追加または修正する
 - テストは `make test`（`go test ./...`）で全件パスすることを確認してから作業完了とする
-- repository テストは `test-db`（PostgreSQL）を使う。
+
+### 層ごとのテスト方針
+
+| 層 | 方針 | 理由 |
+| -- | ---- | ---- |
+| repository | `test-db`（PostgreSQL）で実際にDB操作を検証する | 本番と同じエンジンで方言の差異を防ぐ。SQLite は使わない |
+| service | `UserRepository` 等を手書きモックに置き換えてテストする | DBに依存せず、ビジネスロジックに集中できる |
+| handler | `XxxService` を手書きモックに置き換え、`httptest` でHTTPレスポンスを検証する | サービス層に依存せず、HTTPの入出力に集中できる |
+
+### repository テストの規則
+
+- `TestMain` で `test-db` に接続し `AutoMigrate` を実行する（パッケージ全体で1回）
+- 各テスト関数の冒頭で対象テーブルを `TRUNCATE ... RESTART IDENTITY CASCADE` してデータを分離する
+- `test-db` コンテナは `docker compose up -d test-db` で起動する。`backend` コンテナは起動時に自動で `depends_on` する
+
+### モックの書き方
+
+外部ライブラリは使わず、インターフェースを実装した構造体を手書きする。
+
+```go
+type mockUserRepo struct {
+    findByIDFn func(id uint) (*model.User, error)
+}
+
+func (m *mockUserRepo) FindByID(id uint) (*model.User, error) {
+    return m.findByIDFn(id)
+}
+```
 
 ## Goスタイル
 
