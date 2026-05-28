@@ -10,9 +10,12 @@ import (
 
 func main() {
 	stmts, err := gormschema.New("postgres").Load(
-		&model.Todo{},
+		&model.Company{},
 		&model.User{},
-		&model.RefreshToken{},
+		&model.CompanyMember{},
+		&model.Team{},
+		&model.TeamMember{},
+		&model.Todo{},
 		// 追加モデルをここに列挙
 	)
 	if err != nil {

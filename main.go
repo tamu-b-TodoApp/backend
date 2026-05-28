@@ -37,9 +37,8 @@ func main() {
 	h := handler.NewTodoHandler(svc)
 
 	userRepo := repository.NewUserRepository(db)
-	refreshTokenRepo := repository.NewRefreshTokenRepository(db)
-	authSvc := service.NewAuthService(userRepo, refreshTokenRepo)
-	authMiddleware := middleware.Auth(refreshTokenRepo)
+	authSvc := service.NewAuthService(userRepo)
+	authMiddleware := middleware.Auth()
 	authH := handler.NewAuthHandler(authSvc, authMiddleware)
 
 	healthH := handler.NewHealthHandler()

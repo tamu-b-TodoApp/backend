@@ -21,7 +21,6 @@ func NewAuthHandler(svc service.AuthService, authMiddleware func(http.Handler) h
 func (h *AuthHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /auth/login", h.Login)
 	mux.HandleFunc("POST /auth/refresh", h.Refresh)
-	mux.HandleFunc("POST /auth/logout", h.Logout)
 	mux.Handle("GET /auth/me", h.authMiddleware(http.HandlerFunc(h.Me)))
 }
 
@@ -75,21 +74,6 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"access_token": accessToken})
-}
-
-type logoutRequest struct {
-	RefreshToken string `json:"refresh_token"`
-}
-
-func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	var req logoutRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
-
-	_ = h.service.Logout(req.RefreshToken)
-	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {

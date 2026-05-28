@@ -1,8 +1,6 @@
 package service
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"os"
 	"time"
@@ -21,17 +19,15 @@ var (
 type AuthService interface {
 	Login(email, password string) (accessToken, refreshToken string, err error)
 	Refresh(refreshToken string) (accessToken string, err error)
-	Logout(refreshToken string) error
 	GetUserByID(id uint) (*model.User, error)
 }
 
 type authService struct {
-	userRepo         repository.UserRepository
-	refreshTokenRepo repository.RefreshTokenRepository
+	userRepo repository.UserRepository
 }
 
-func NewAuthService(userRepo repository.UserRepository, refreshTokenRepo repository.RefreshTokenRepository) AuthService {
-	return &authService{userRepo: userRepo, refreshTokenRepo: refreshTokenRepo}
+func NewAuthService(userRepo repository.UserRepository) AuthService {
+	return &authService{userRepo: userRepo}
 }
 
 func (s *authService) Login(email, password string) (string, string, error) {
@@ -43,62 +39,61 @@ func (s *authService) Login(email, password string) (string, string, error) {
 		return "", "", ErrInvalidCredentials
 	}
 
-	rt, err := s.issueRefreshToken(user.ID)
+	accessToken, err := generateToken(user.ID, "access", 15*time.Minute)
+	if err != nil {
+		return "", "", err
+	}
+	refreshToken, err := generateToken(user.ID, "refresh", 7*24*time.Hour)
 	if err != nil {
 		return "", "", err
 	}
 
-	accessToken, err := generateAccessToken(user.ID, rt.ID)
-	if err != nil {
-		return "", "", err
-	}
-
-	return accessToken, rt.Token, nil
+	return accessToken, refreshToken, nil
 }
 
 func (s *authService) Refresh(refreshToken string) (string, error) {
-	rt, err := s.refreshTokenRepo.FindByToken(refreshToken)
+	claims, err := parseToken(refreshToken)
 	if err != nil {
 		return "", ErrInvalidToken
 	}
-	if time.Now().After(rt.ExpiresAt) {
-		_ = s.refreshTokenRepo.DeleteByToken(refreshToken)
+	if claims["type"] != "refresh" {
 		return "", ErrInvalidToken
 	}
 
-	return generateAccessToken(rt.UserID, rt.ID)
-}
+	sub, ok := claims["sub"].(float64)
+	if !ok {
+		return "", ErrInvalidToken
+	}
 
-func (s *authService) Logout(refreshToken string) error {
-	return s.refreshTokenRepo.DeleteByToken(refreshToken)
+	return generateToken(uint(sub), "access", 15*time.Minute)
 }
 
 func (s *authService) GetUserByID(id uint) (*model.User, error) {
 	return s.userRepo.FindByID(id)
 }
 
-func (s *authService) issueRefreshToken(userID uint) (*model.RefreshToken, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return nil, err
-	}
-
-	rt := &model.RefreshToken{
-		UserID:    userID,
-		Token:     hex.EncodeToString(b),
-		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
-	}
-	if err := s.refreshTokenRepo.Create(rt); err != nil {
-		return nil, err
-	}
-	return rt, nil
-}
-
-func generateAccessToken(userID uint, refreshTokenID uint) (string, error) {
+func generateToken(userID uint, tokenType string, duration time.Duration) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": userID,
-		"rti": refreshTokenID,
-		"exp": time.Now().Add(15 * time.Minute).Unix(),
+		"sub":  userID,
+		"type": tokenType,
+		"exp":  time.Now().Add(duration).Unix(),
 	})
 	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+}
+
+func parseToken(tokenStr string) (jwt.MapClaims, error) {
+	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil || !token.Valid {
+		return nil, ErrInvalidToken
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, ErrInvalidToken
+	}
+	return claims, nil
 }
